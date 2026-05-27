@@ -47,8 +47,8 @@ func main() {
 		auth.PUT("/lists/:id", listH.Update)
 		auth.DELETE("/lists/:id", listH.Delete)
 
-		auth.POST("/lists/:listId/tasks", taskH.Create)
-		auth.GET("/lists/:listId/tasks", taskH.GetByList)
+		auth.POST("/lists/:id/tasks", taskH.Create)
+		auth.GET("/lists/:id/tasks", taskH.GetByList)
 		auth.GET("/tasks/:id", taskH.GetByID)
 		auth.PUT("/tasks/:id", taskH.Update)
 		auth.DELETE("/tasks/:id", taskH.Delete)

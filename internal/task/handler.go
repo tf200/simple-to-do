@@ -17,7 +17,7 @@ func NewHandler(service *Service) *Handler {
 
 func (h *Handler) Create(c *gin.Context) {
 	userID, _ := primitive.ObjectIDFromHex(c.GetString("user_id"))
-	listID, err := primitive.ObjectIDFromHex(c.Param("listId"))
+	listID, err := primitive.ObjectIDFromHex(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid list id"})
 		return
@@ -44,7 +44,7 @@ func (h *Handler) Create(c *gin.Context) {
 
 func (h *Handler) GetByList(c *gin.Context) {
 	userID, _ := primitive.ObjectIDFromHex(c.GetString("user_id"))
-	listID, err := primitive.ObjectIDFromHex(c.Param("listId"))
+	listID, err := primitive.ObjectIDFromHex(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid list id"})
 		return
