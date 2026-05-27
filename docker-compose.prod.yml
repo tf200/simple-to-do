@@ -1,0 +1,44 @@
+services:
+  nginx:
+    image: jc21/nginx-proxy-manager:latest
+    container_name: todoapp-nginx-proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "81:81"
+      - "443:443"
+    volumes:
+      - nginx_proxy_data:/data
+      - nginx_proxy_letsencrypt:/etc/letsencrypt
+    depends_on:
+      - app
+
+  mongo:
+    image: mongo:7.0
+    container_name: todoapp-mongo-prod
+    restart: unless-stopped
+    volumes:
+      - mongo_prod_data:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh --quiet
+      interval: 5s
+      retries: 5
+
+  app:
+    build: .
+    container_name: todoapp-api-prod
+    restart: unless-stopped
+    expose:
+      - "8080"
+    environment:
+      MONGO_URI: mongodb://mongo:27017
+      JWT_SECRET: ${JWT_SECRET}
+      PORT: "8080"
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+volumes:
+  mongo_prod_data:
+  nginx_proxy_data:
+  nginx_proxy_letsencrypt:

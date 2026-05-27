@@ -1,0 +1,30 @@
+services:
+  mongo:
+    image: mongo:7.0
+    container_name: todoapp-mongo-dev
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_dev_data:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh --quiet
+      interval: 5s
+      retries: 5
+
+  app:
+    build: .
+    container_name: todoapp-api-dev
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8080}:8080"
+    environment:
+      MONGO_URI: mongodb://mongo:27017
+      JWT_SECRET: ${JWT_SECRET}
+      PORT: "8080"
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+volumes:
+  mongo_dev_data:

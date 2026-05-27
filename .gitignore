@@ -1,0 +1,25 @@
+.env
+*.env
+
+# Go build outputs
+/server
+/todoapp
+*.test
+*.out
+
+# Coverage
+coverage.out
+coverage.html
+
+# Local/editor files
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Logs
+*.log
+
+# Docker/local data
+data/
+tmp/
