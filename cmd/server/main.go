@@ -38,20 +38,27 @@ func main() {
 
 	r.POST("/login", authH.Login)
 
-	auth := r.Group("/api")
-	auth.Use(middleware.AuthRequired(cfg.JWTSecret))
+	api := r.Group("/api")
+	api.Use(middleware.AuthRequired(cfg.JWTSecret, authRepo))
 	{
-		auth.GET("/lists", listH.GetAll)
-		auth.POST("/lists", listH.Create)
-		auth.GET("/lists/:id", listH.GetByID)
-		auth.PUT("/lists/:id", listH.Update)
-		auth.DELETE("/lists/:id", listH.Delete)
+		tokens := api.Group("/tokens", middleware.RequireJWT())
+		{
+			tokens.POST("", authH.CreateAPIToken)
+			tokens.GET("", authH.ListAPITokens)
+			tokens.DELETE("/:id", authH.RevokeAPIToken)
+		}
 
-		auth.POST("/lists/:id/tasks", taskH.Create)
-		auth.GET("/lists/:id/tasks", taskH.GetByList)
-		auth.GET("/tasks/:id", taskH.GetByID)
-		auth.PUT("/tasks/:id", taskH.Update)
-		auth.DELETE("/tasks/:id", taskH.Delete)
+		api.GET("/lists", listH.GetAll)
+		api.POST("/lists", listH.Create)
+		api.GET("/lists/:id", listH.GetByID)
+		api.PUT("/lists/:id", listH.Update)
+		api.DELETE("/lists/:id", listH.Delete)
+
+		api.POST("/lists/:id/tasks", taskH.Create)
+		api.GET("/lists/:id/tasks", taskH.GetByList)
+		api.GET("/tasks/:id", taskH.GetByID)
+		api.PUT("/tasks/:id", taskH.Update)
+		api.DELETE("/tasks/:id", taskH.Delete)
 	}
 
 	r.Run(":" + cfg.Port)
