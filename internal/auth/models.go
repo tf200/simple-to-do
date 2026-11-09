@@ -16,8 +16,13 @@ type RegisterRequest struct {
 	Password string `json:"password" binding:"required,min=8,max=72"`
 }
 
+// LoginResponse is a session: `token` is the access JWT (short-lived, sent as Bearer), and
+// `refresh_token` gets the next pair from POST /refresh. `expires_at` is the access token's
+// expiry in Unix seconds.
 type LoginResponse struct {
-	Token string `json:"token"`
+	Token        string `json:"token"`
+	RefreshToken string `json:"refresh_token"`
+	ExpiresAt    int64  `json:"expires_at"`
 }
 
 type CreateAPITokenRequest struct {

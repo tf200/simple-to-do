@@ -49,6 +49,8 @@ func main() {
 
 	r.POST("/login", authH.Login)
 	r.POST("/register", authH.Register)
+	r.POST("/refresh", authH.Refresh)
+	r.POST("/logout", authH.Logout)
 
 	api := r.Group("/api")
 	api.Use(middleware.AuthRequired(cfg.JWTSecret, authRepo))
