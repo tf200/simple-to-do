@@ -18,6 +18,27 @@ type ListOwnership interface {
 type Service struct {
 	repo    *Repository
 	listSvc ListOwnership
+	// Runs before tasks are deleted (their attachments go first); an error stops the delete.
+	beforeDelete func(ctx context.Context, ids []primitive.ObjectID) error
+}
+
+// BeforeDelete sets what runs before tasks are deleted.
+func (s *Service) BeforeDelete(f func(ctx context.Context, ids []primitive.ObjectID) error) {
+	s.beforeDelete = f
+}
+
+// DeleteByList deletes every task in a list, once the list's ownership has been checked.
+func (s *Service) DeleteByList(ctx context.Context, listID primitive.ObjectID) error {
+	ids, err := s.repo.IDsByList(ctx, listID)
+	if err != nil {
+		return err
+	}
+	if s.beforeDelete != nil {
+		if err := s.beforeDelete(ctx, ids); err != nil {
+			return err
+		}
+	}
+	return s.repo.DeleteByList(ctx, listID)
 }
 
 func NewService(repo *Repository, listSvc ListOwnership) *Service {
@@ -106,6 +127,11 @@ func (s *Service) Delete(ctx context.Context, userID, taskID primitive.ObjectID)
 	}
 	if _, err := s.listSvc.GetByID(ctx, userID, task.ListID); err != nil {
 		return errors.New("not found")
+	}
+	if s.beforeDelete != nil {
+		if err := s.beforeDelete(ctx, []primitive.ObjectID{taskID}); err != nil {
+			return err
+		}
 	}
 	return s.repo.Delete(ctx, taskID)
 }

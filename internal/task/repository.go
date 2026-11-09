@@ -6,6 +6,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 
 	models "tf200/todoapp/internal"
 )
@@ -55,6 +56,30 @@ func (r *Repository) Update(ctx context.Context, id primitive.ObjectID, set, uns
 		change["$unset"] = unset
 	}
 	_, err := r.coll.UpdateOne(ctx, bson.M{"_id": id}, change)
+	return err
+}
+
+// IDsByList returns the ids of a list's tasks.
+func (r *Repository) IDsByList(ctx context.Context, listID primitive.ObjectID) ([]primitive.ObjectID, error) {
+	cursor, err := r.coll.Find(ctx, bson.M{"list_id": listID}, options.Find().SetProjection(bson.M{"_id": 1}))
+	if err != nil {
+		return nil, err
+	}
+	var rows []struct {
+		ID primitive.ObjectID `bson:"_id"`
+	}
+	if err := cursor.All(ctx, &rows); err != nil {
+		return nil, err
+	}
+	ids := make([]primitive.ObjectID, len(rows))
+	for i, r := range rows {
+		ids[i] = r.ID
+	}
+	return ids, nil
+}
+
+func (r *Repository) DeleteByList(ctx context.Context, listID primitive.ObjectID) error {
+	_, err := r.coll.DeleteMany(ctx, bson.M{"list_id": listID})
 	return err
 }
 

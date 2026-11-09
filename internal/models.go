@@ -35,3 +35,18 @@ type Note struct {
 	CreatedAt primitive.DateTime `bson:"created_at" json:"created_at"`
 	UpdatedAt primitive.DateTime `bson:"updated_at" json:"updated_at"`
 }
+
+// Attachment is a file on a task or a note. The bytes live in the S3 store under Key; this is
+// what the API knows about them. Pending ones have an upload link out but no confirmed upload.
+type Attachment struct {
+	ID         primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	UserID     primitive.ObjectID `bson:"user_id" json:"-"`
+	ParentKind string             `bson:"parent_kind" json:"parent_kind"`
+	ParentID   primitive.ObjectID `bson:"parent_id" json:"parent_id"`
+	Name       string             `bson:"name" json:"name"`
+	Mime       string             `bson:"mime" json:"mime"`
+	Size       int64              `bson:"size" json:"size"`
+	Key        string             `bson:"key" json:"-"`
+	Status     string             `bson:"status" json:"status"`
+	CreatedAt  primitive.DateTime `bson:"created_at" json:"created_at"`
+}

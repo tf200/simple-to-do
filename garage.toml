@@ -1,0 +1,18 @@
+# Garage, the S3 store for attachments: one node, no replication.
+# Secrets come from the environment (GARAGE_RPC_SECRET and the GARAGE_DEFAULT_* keys set in
+# the compose files), so this file holds none and is committed as is.
+metadata_dir = "/var/lib/garage/meta"
+data_dir = "/var/lib/garage/data"
+db_engine = "sqlite"
+# Snapshots of the metadata database, so a crash mid-write can't lose the index of the files.
+metadata_auto_snapshot_interval = "6h"
+
+replication_factor = 1
+
+rpc_bind_addr = "[::]:3901"
+rpc_public_addr = "127.0.0.1:3901"
+
+[s3_api]
+s3_region = "garage"
+api_bind_addr = "[::]:3900"
+# No root_domain: buckets are addressed by path (host/bucket/key), so one hostname is enough.

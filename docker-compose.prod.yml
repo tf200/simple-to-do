@@ -24,6 +24,25 @@ services:
       interval: 5s
       retries: 5
 
+  garage:
+    image: dxflrs/garage:v2.5.0
+    container_name: todoapp-garage-prod
+    restart: unless-stopped
+    command: ["/garage", "server", "--single-node", "--default-bucket"]
+    # Not published: the API reaches it as garage:3900, and the proxy serves it to the apps
+    # on its own hostname (S3_PUBLIC_URL) for the upload and download links.
+    expose:
+      - "3900"
+    environment:
+      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET}
+      GARAGE_DEFAULT_ACCESS_KEY: ${S3_ACCESS_KEY}
+      GARAGE_DEFAULT_SECRET_KEY: ${S3_SECRET_KEY}
+      GARAGE_DEFAULT_BUCKET: attachments
+    volumes:
+      - ./garage.toml:/etc/garage.toml:ro
+      - garage_prod_meta:/var/lib/garage/meta
+      - garage_prod_data:/var/lib/garage/data
+
   app:
     # Built on the dev machine and shipped by ./deploy.sh; the server never builds.
     image: todoapp-api:latest
@@ -36,11 +55,21 @@ services:
       MONGO_URI: mongodb://mongo:27017
       JWT_SECRET: ${JWT_SECRET}
       PORT: "8080"
+      S3_ENDPOINT: http://garage:3900
+      # Empty until the hostname exists: attachments stay off (the API answers 503 for them).
+      S3_PUBLIC_URL: ${S3_PUBLIC_URL:-}
+      S3_BUCKET: attachments
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
     depends_on:
       mongo:
         condition: service_healthy
+      garage:
+        condition: service_started
 
 volumes:
   mongo_prod_data:
+  garage_prod_meta:
+  garage_prod_data:
   nginx_proxy_data:
   nginx_proxy_letsencrypt:

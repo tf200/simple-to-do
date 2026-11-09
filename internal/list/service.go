@@ -13,6 +13,13 @@ import (
 
 type Service struct {
 	repo *Repository
+	// Runs before a list is deleted: its tasks (and their attachments) go first.
+	beforeDelete func(ctx context.Context, listID primitive.ObjectID) error
+}
+
+// BeforeDelete sets what runs before a list is deleted; an error stops the delete.
+func (s *Service) BeforeDelete(f func(ctx context.Context, listID primitive.ObjectID) error) {
+	s.beforeDelete = f
 }
 
 func NewService(repo *Repository) *Service {
@@ -64,6 +71,11 @@ func (s *Service) Delete(ctx context.Context, userID, listID primitive.ObjectID)
 	}
 	if list.UserID != userID {
 		return errors.New("not found")
+	}
+	if s.beforeDelete != nil {
+		if err := s.beforeDelete(ctx, listID); err != nil {
+			return err
+		}
 	}
 	return s.repo.Delete(ctx, listID)
 }

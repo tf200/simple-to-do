@@ -24,6 +24,7 @@ die() { printf '\033[31merror: %s\033[0m\n' "$*" >&2; exit 1; }
 remote() { ssh -o BatchMode=yes "$HOST" "$@"; }
 
 # Restarts the API on whatever todoapp-api:latest is on the server.
+# Starts Garage too the first time (the API depends on it); later deploys leave it running.
 restart() {
   remote "cd '$DIR' && docker compose -f $COMPOSE up -d --no-build app"
 }
@@ -64,6 +65,14 @@ deploy() {
   say "Shipping the image to $HOST"
   docker save "$IMAGE:$sha" | gzip -1 | remote "gunzip | docker load -q"
   git show "HEAD:$COMPOSE" | remote "cat > '$DIR/$COMPOSE'"
+  git show "HEAD:garage.toml" | remote "cat > '$DIR/garage.toml'"
+  # Garage's secrets are made on the server the first time and never leave it.
+  remote "cd '$DIR' && touch .env && if ! grep -q '^S3_ACCESS_KEY=' .env; then
+      echo 'GARAGE_RPC_SECRET='\$(openssl rand -hex 32) >> .env
+      echo 'S3_ACCESS_KEY=GK'\$(openssl rand -hex 12) >> .env
+      echo 'S3_SECRET_KEY='\$(openssl rand -hex 32) >> .env
+      echo '    made the attachment store keys in $DIR/.env'
+    fi"
 
   say "Restarting the API"
   # Keep what's running now as :previous, so a bad deploy can go straight back.

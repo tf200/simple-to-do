@@ -17,6 +17,13 @@ var ErrNotFound = errors.New("note not found")
 
 type Service struct {
 	repo *Repository
+	// Runs before a note is deleted (its attachments go first); an error stops the delete.
+	beforeDelete func(ctx context.Context, ids []primitive.ObjectID) error
+}
+
+// BeforeDelete sets what runs before a note is deleted.
+func (s *Service) BeforeDelete(f func(ctx context.Context, ids []primitive.ObjectID) error) {
+	s.beforeDelete = f
 }
 
 func NewService(repo *Repository) *Service {
@@ -79,6 +86,14 @@ func (s *Service) Update(ctx context.Context, userID, id primitive.ObjectID, tit
 }
 
 func (s *Service) Delete(ctx context.Context, userID, id primitive.ObjectID) error {
+	if s.beforeDelete != nil {
+		if _, err := s.GetByID(ctx, userID, id); err != nil {
+			return err
+		}
+		if err := s.beforeDelete(ctx, []primitive.ObjectID{id}); err != nil {
+			return err
+		}
+	}
 	err := s.repo.Delete(ctx, userID, id)
 	if errors.Is(err, mongo.ErrNoDocuments) {
 		return ErrNotFound
