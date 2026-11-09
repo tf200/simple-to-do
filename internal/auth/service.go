@@ -8,9 +8,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"strings"
-	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/crypto/bcrypt"
@@ -53,7 +51,7 @@ func (s *Service) Login(email, password string) (*LoginResponse, error) {
 		return nil, ErrInvalidCredentials
 	}
 
-	return s.issueToken(user)
+	return s.issueSession(context.Background(), user, primitive.NewObjectID())
 }
 
 func (s *Service) Register(ctx context.Context, email, password string) (*LoginResponse, error) {
@@ -78,7 +76,7 @@ func (s *Service) Register(ctx context.Context, email, password string) (*LoginR
 		return nil, err
 	}
 
-	return s.issueToken(user)
+	return s.issueSession(ctx, user, primitive.NewObjectID())
 }
 
 func (s *Service) Me(ctx context.Context, userID primitive.ObjectID) (*UserResponse, error) {
@@ -91,21 +89,6 @@ func (s *Service) Me(ctx context.Context, userID primitive.ObjectID) (*UserRespo
 		Email:     user.Email,
 		CreatedAt: primitive.NewDateTimeFromTime(user.CreatedAt),
 	}, nil
-}
-
-func (s *Service) issueToken(user *User) (*LoginResponse, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"sub":   user.ID.Hex(),
-		"email": user.Email,
-		"exp":   time.Now().Add(72 * time.Hour).Unix(),
-	})
-
-	tokenString, err := token.SignedString(s.jwtSecret)
-	if err != nil {
-		return nil, err
-	}
-
-	return &LoginResponse{Token: tokenString}, nil
 }
 
 func (s *Service) CreateAPIToken(ctx context.Context, userID primitive.ObjectID, name string) (*CreateAPITokenResponse, error) {

@@ -52,6 +52,44 @@ func (h *Handler) Register(c *gin.Context) {
 	c.JSON(http.StatusCreated, resp)
 }
 
+// Refresh trades a refresh token for a new session. 401 means sign in again.
+func (h *Handler) Refresh(c *gin.Context) {
+	var req RefreshRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	resp, err := h.service.Refresh(c.Request.Context(), req.RefreshToken)
+	if errors.Is(err, ErrInvalidRefresh) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not refresh"})
+		return
+	}
+
+	c.JSON(http.StatusOK, resp)
+}
+
+// Logout revokes the sign-in a refresh token belongs to. It answers 204 whether or not the
+// token was known, so it says nothing about which tokens exist.
+func (h *Handler) Logout(c *gin.Context) {
+	var req RefreshRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.service.Logout(c.Request.Context(), req.RefreshToken); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not log out"})
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
+
 func (h *Handler) Me(c *gin.Context) {
 	userID, err := primitive.ObjectIDFromHex(c.GetString("user_id"))
 	if err != nil {

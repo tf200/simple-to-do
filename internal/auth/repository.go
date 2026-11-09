@@ -12,14 +12,16 @@ import (
 )
 
 type Repository struct {
-	coll      *mongo.Collection
-	tokenColl *mongo.Collection
+	coll        *mongo.Collection
+	tokenColl   *mongo.Collection
+	refreshColl *mongo.Collection
 }
 
 func NewRepository(db *mongo.Database) *Repository {
 	return &Repository{
-		coll:      db.Collection("users"),
-		tokenColl: db.Collection("api_tokens"),
+		coll:        db.Collection("users"),
+		tokenColl:   db.Collection("api_tokens"),
+		refreshColl: db.Collection("refresh_tokens"),
 	}
 }
 
@@ -32,13 +34,17 @@ func (r *Repository) FindByEmail(ctx context.Context, email string) (*User, erro
 	return &user, nil
 }
 
-// EnsureIndexes makes emails unique, so two registrations can't create the same account.
+// EnsureIndexes makes emails unique, so two registrations can't create the same account, and
+// sets up the refresh-token collection.
 func (r *Repository) EnsureIndexes(ctx context.Context) error {
 	_, err := r.coll.Indexes().CreateOne(ctx, mongo.IndexModel{
 		Keys:    bson.D{{Key: "email", Value: 1}},
 		Options: options.Index().SetUnique(true),
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	return r.ensureRefreshIndexes(ctx)
 }
 
 func (r *Repository) FindByID(ctx context.Context, id primitive.ObjectID) (*User, error) {
