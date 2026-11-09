@@ -33,7 +33,7 @@ func AuthRequired(jwtSecret string, tokenFinder apiTokenFinder) gin.HandlerFunc 
 		rawToken := parts[1]
 		token, err := jwt.Parse(rawToken, func(t *jwt.Token) (interface{}, error) {
 			return []byte(jwtSecret), nil
-		})
+		}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
 		if err == nil && token.Valid {
 			claims, ok := token.Claims.(jwt.MapClaims)
 			if !ok {

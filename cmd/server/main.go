@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 
 	"github.com/gin-gonic/gin"
@@ -23,6 +24,9 @@ func main() {
 	db := client.Database("todoapp")
 
 	authRepo := auth.NewRepository(db)
+	if err := authRepo.EnsureIndexes(context.Background()); err != nil {
+		log.Fatalf("failed to create user indexes: %v", err)
+	}
 	authSvc := auth.NewService(authRepo, cfg.JWTSecret)
 	authH := auth.NewHandler(authSvc)
 
@@ -37,10 +41,13 @@ func main() {
 	r := gin.Default()
 
 	r.POST("/login", authH.Login)
+	r.POST("/register", authH.Register)
 
 	api := r.Group("/api")
 	api.Use(middleware.AuthRequired(cfg.JWTSecret, authRepo))
 	{
+		api.GET("/me", authH.Me)
+
 		tokens := api.Group("/tokens", middleware.RequireJWT())
 		{
 			tokens.POST("", authH.CreateAPIToken)

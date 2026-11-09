@@ -8,6 +8,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type Repository struct {
@@ -25,6 +26,24 @@ func NewRepository(db *mongo.Database) *Repository {
 func (r *Repository) FindByEmail(ctx context.Context, email string) (*User, error) {
 	var user User
 	err := r.coll.FindOne(ctx, bson.M{"email": email}).Decode(&user)
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+// EnsureIndexes makes emails unique, so two registrations can't create the same account.
+func (r *Repository) EnsureIndexes(ctx context.Context) error {
+	_, err := r.coll.Indexes().CreateOne(ctx, mongo.IndexModel{
+		Keys:    bson.D{{Key: "email", Value: 1}},
+		Options: options.Index().SetUnique(true),
+	})
+	return err
+}
+
+func (r *Repository) FindByID(ctx context.Context, id primitive.ObjectID) (*User, error) {
+	var user User
+	err := r.coll.FindOne(ctx, bson.M{"_id": id}).Decode(&user)
 	if err != nil {
 		return nil, err
 	}
