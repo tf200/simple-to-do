@@ -16,8 +16,8 @@ type ListOwnership interface {
 }
 
 type Service struct {
-	repo     *Repository
-	listSvc  ListOwnership
+	repo    *Repository
+	listSvc ListOwnership
 }
 
 func NewService(repo *Repository, listSvc ListOwnership) *Service {
@@ -61,7 +61,13 @@ func (s *Service) GetByID(ctx context.Context, userID, taskID primitive.ObjectID
 	return task, nil
 }
 
-func (s *Service) Update(ctx context.Context, userID, taskID primitive.ObjectID, title, description *string, dueAt *primitive.DateTime, done *bool) error {
+// DueChange says what an update does to a task's due date: nothing, set it, or clear it.
+type DueChange struct {
+	Set   *primitive.DateTime
+	Clear bool
+}
+
+func (s *Service) Update(ctx context.Context, userID, taskID primitive.ObjectID, title, description *string, due DueChange, done *bool) error {
 	task, err := s.repo.FindByID(ctx, taskID)
 	if err != nil {
 		return err
@@ -77,17 +83,20 @@ func (s *Service) Update(ctx context.Context, userID, taskID primitive.ObjectID,
 	if description != nil {
 		update["description"] = *description
 	}
-	if dueAt != nil {
-		update["due_at"] = dueAt
+	unset := bson.M{}
+	if due.Set != nil {
+		update["due_at"] = due.Set
+	} else if due.Clear {
+		unset["due_at"] = ""
 	}
 	if done != nil {
 		update["done"] = *done
 	}
-	if len(update) == 0 {
+	if len(update) == 0 && len(unset) == 0 {
 		return nil
 	}
 
-	return s.repo.Update(ctx, taskID, update)
+	return s.repo.Update(ctx, taskID, update, unset)
 }
 
 func (s *Service) Delete(ctx context.Context, userID, taskID primitive.ObjectID) error {

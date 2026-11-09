@@ -45,8 +45,16 @@ func (r *Repository) FindByID(ctx context.Context, id primitive.ObjectID) (*mode
 	return &task, nil
 }
 
-func (r *Repository) Update(ctx context.Context, id primitive.ObjectID, update bson.M) error {
-	_, err := r.coll.UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$set": update})
+// Update sets the fields in `set` and removes those in `unset`; either may be empty.
+func (r *Repository) Update(ctx context.Context, id primitive.ObjectID, set, unset bson.M) error {
+	change := bson.M{}
+	if len(set) > 0 {
+		change["$set"] = set
+	}
+	if len(unset) > 0 {
+		change["$unset"] = unset
+	}
+	_, err := r.coll.UpdateOne(ctx, bson.M{"_id": id}, change)
 	return err
 }
 
