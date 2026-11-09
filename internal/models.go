@@ -17,10 +17,10 @@ type List struct {
 }
 
 type Task struct {
-	ID          primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	ListID      primitive.ObjectID `bson:"list_id" json:"list_id"`
-	Title       string             `bson:"title" json:"title"`
-	Description string             `bson:"description" json:"description"`
+	ID          primitive.ObjectID  `bson:"_id,omitempty" json:"id"`
+	ListID      primitive.ObjectID  `bson:"list_id" json:"list_id"`
+	Title       string              `bson:"title" json:"title"`
+	Description string              `bson:"description" json:"description"`
 	DueAt       *primitive.DateTime `bson:"due_at,omitempty" json:"due_at,omitempty"`
 	Done        bool                `bson:"done" json:"done"`
 	CreatedAt   primitive.DateTime  `bson:"created_at" json:"created_at"`
