@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -29,6 +30,43 @@ func (h *Handler) Login(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, resp)
+}
+
+func (h *Handler) Register(c *gin.Context) {
+	var req RegisterRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	resp, err := h.service.Register(c.Request.Context(), req.Email, req.Password)
+	if errors.Is(err, ErrEmailTaken) {
+		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+		return
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not register"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, resp)
+}
+
+func (h *Handler) Me(c *gin.Context) {
+	userID, err := primitive.ObjectIDFromHex(c.GetString("user_id"))
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid user"})
+		return
+	}
+
+	user, err := h.service.Me(c.Request.Context(), userID)
+	if err != nil {
+		// A valid token for a user that no longer exists is no longer a session.
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid user"})
+		return
+	}
+
+	c.JSON(http.StatusOK, user)
 }
 
 func (h *Handler) CreateAPIToken(c *gin.Context) {

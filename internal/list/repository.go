@@ -11,11 +11,12 @@ import (
 )
 
 type Repository struct {
-	coll *mongo.Collection
+	coll  *mongo.Collection
+	tasks *mongo.Collection
 }
 
 func NewRepository(db *mongo.Database) *Repository {
-	return &Repository{coll: db.Collection("lists")}
+	return &Repository{coll: db.Collection("lists"), tasks: db.Collection("tasks")}
 }
 
 func (r *Repository) Create(ctx context.Context, list *models.List) error {
@@ -50,7 +51,11 @@ func (r *Repository) Update(ctx context.Context, id primitive.ObjectID, update b
 	return err
 }
 
+// Delete removes the list and its tasks, so no orphaned tasks are left behind.
 func (r *Repository) Delete(ctx context.Context, id primitive.ObjectID) error {
+	if _, err := r.tasks.DeleteMany(ctx, bson.M{"list_id": id}); err != nil {
+		return err
+	}
 	_, err := r.coll.DeleteOne(ctx, bson.M{"_id": id})
 	return err
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 
 	"github.com/gin-gonic/gin"
@@ -10,6 +11,7 @@ import (
 	"tf200/todoapp/internal/database"
 	"tf200/todoapp/internal/list"
 	"tf200/todoapp/internal/middleware"
+	"tf200/todoapp/internal/note"
 	"tf200/todoapp/internal/task"
 )
 
@@ -23,6 +25,9 @@ func main() {
 	db := client.Database("todoapp")
 
 	authRepo := auth.NewRepository(db)
+	if err := authRepo.EnsureIndexes(context.Background()); err != nil {
+		log.Fatalf("failed to create user indexes: %v", err)
+	}
 	authSvc := auth.NewService(authRepo, cfg.JWTSecret)
 	authH := auth.NewHandler(authSvc)
 
@@ -34,13 +39,22 @@ func main() {
 	taskSvc := task.NewService(taskRepo, listSvc)
 	taskH := task.NewHandler(taskSvc)
 
+	noteRepo := note.NewRepository(db)
+	if err := noteRepo.EnsureIndexes(context.Background()); err != nil {
+		log.Fatalf("failed to create note indexes: %v", err)
+	}
+	noteH := note.NewHandler(note.NewService(noteRepo))
+
 	r := gin.Default()
 
 	r.POST("/login", authH.Login)
+	r.POST("/register", authH.Register)
 
 	api := r.Group("/api")
 	api.Use(middleware.AuthRequired(cfg.JWTSecret, authRepo))
 	{
+		api.GET("/me", authH.Me)
+
 		tokens := api.Group("/tokens", middleware.RequireJWT())
 		{
 			tokens.POST("", authH.CreateAPIToken)
@@ -59,6 +73,12 @@ func main() {
 		api.GET("/tasks/:id", taskH.GetByID)
 		api.PUT("/tasks/:id", taskH.Update)
 		api.DELETE("/tasks/:id", taskH.Delete)
+
+		api.GET("/notes", noteH.GetAll)
+		api.POST("/notes", noteH.Create)
+		api.GET("/notes/:id", noteH.GetByID)
+		api.PUT("/notes/:id", noteH.Update)
+		api.DELETE("/notes/:id", noteH.Delete)
 	}
 
 	r.Run(":" + cfg.Port)

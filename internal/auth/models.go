@@ -11,6 +11,11 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
+type RegisterRequest struct {
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required,min=8,max=72"`
+}
+
 type LoginResponse struct {
 	Token string `json:"token"`
 }

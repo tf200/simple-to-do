@@ -1,6 +1,7 @@
 package task
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -85,17 +86,32 @@ func (h *Handler) Update(c *gin.Context) {
 	}
 
 	var req struct {
-		Title       *string             `json:"title"`
-		Description *string             `json:"description"`
-		DueAt       *primitive.DateTime `json:"due_at"`
-		Done        *bool               `json:"done"`
+		Title       *string `json:"title"`
+		Description *string `json:"description"`
+		// Raw so a missing due_at (leave it) differs from "due_at": null (clear it).
+		DueAt json.RawMessage `json:"due_at"`
+		Done  *bool           `json:"done"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	if err := h.service.Update(c.Request.Context(), userID, taskID, req.Title, req.Description, req.DueAt, req.Done); err != nil {
+	var due DueChange
+	switch {
+	case len(req.DueAt) == 0:
+	case string(req.DueAt) == "null":
+		due.Clear = true
+	default:
+		var at primitive.DateTime
+		if err := json.Unmarshal(req.DueAt, &at); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid due_at"})
+			return
+		}
+		due.Set = &at
+	}
+
+	if err := h.service.Update(c.Request.Context(), userID, taskID, req.Title, req.Description, due, req.Done); err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
