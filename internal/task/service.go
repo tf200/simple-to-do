@@ -15,9 +15,18 @@ type ListOwnership interface {
 	GetByID(ctx context.Context, userID, listID primitive.ObjectID) (*models.List, error)
 }
 
+// Stages says whether a user has a workflow step.
+type Stages interface {
+	Has(ctx context.Context, userID primitive.ObjectID, id string) (bool, error)
+}
+
+// ErrBadStage is an update naming a step the user doesn't have, or a step and done together.
+var ErrBadStage = errors.New("no such step")
+
 type Service struct {
 	repo    *Repository
 	listSvc ListOwnership
+	stages  Stages
 	// Runs before tasks are deleted (their attachments go first); an error stops the delete.
 	beforeDelete func(ctx context.Context, ids []primitive.ObjectID) error
 }
@@ -41,8 +50,8 @@ func (s *Service) DeleteByList(ctx context.Context, listID primitive.ObjectID) e
 	return s.repo.DeleteByList(ctx, listID)
 }
 
-func NewService(repo *Repository, listSvc ListOwnership) *Service {
-	return &Service{repo: repo, listSvc: listSvc}
+func NewService(repo *Repository, listSvc ListOwnership, stages Stages) *Service {
+	return &Service{repo: repo, listSvc: listSvc, stages: stages}
 }
 
 func (s *Service) Create(ctx context.Context, userID, listID primitive.ObjectID, title, description string, dueAt *primitive.DateTime) (*models.Task, error) {
@@ -88,7 +97,7 @@ type DueChange struct {
 	Clear bool
 }
 
-func (s *Service) Update(ctx context.Context, userID, taskID primitive.ObjectID, title, description *string, due DueChange, done *bool) error {
+func (s *Service) Update(ctx context.Context, userID, taskID primitive.ObjectID, title, description *string, due DueChange, done *bool, stage *string) error {
 	task, err := s.repo.FindByID(ctx, taskID)
 	if err != nil {
 		return err
@@ -109,6 +118,24 @@ func (s *Service) Update(ctx context.Context, userID, taskID primitive.ObjectID,
 		update["due_at"] = due.Set
 	} else if due.Clear {
 		unset["due_at"] = ""
+	}
+	// A task is in one place: to do, a step, or done. Moving it to a step makes it not done;
+	// marking it done (or to do, with "stage": "") takes it out of its step.
+	if stage != nil && *stage != "" {
+		if done != nil && *done {
+			return ErrBadStage
+		}
+		ok, err := s.stages.Has(ctx, userID, *stage)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return ErrBadStage
+		}
+		update["stage"] = *stage
+		update["done"] = false
+	} else if stage != nil || (done != nil && *done) {
+		unset["stage"] = ""
 	}
 	if done != nil {
 		update["done"] = *done

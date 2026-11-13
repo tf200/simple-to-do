@@ -16,6 +16,7 @@ import (
 	"tf200/todoapp/internal/list"
 	"tf200/todoapp/internal/middleware"
 	"tf200/todoapp/internal/note"
+	"tf200/todoapp/internal/stage"
 	"tf200/todoapp/internal/task"
 )
 
@@ -39,8 +40,11 @@ func main() {
 	listSvc := list.NewService(listRepo)
 	listH := list.NewHandler(listSvc)
 
+	stageSvc := stage.NewService(stage.NewRepository(db))
+	stageH := stage.NewHandler(stageSvc)
+
 	taskRepo := task.NewRepository(db)
-	taskSvc := task.NewService(taskRepo, listSvc)
+	taskSvc := task.NewService(taskRepo, listSvc, stageSvc)
 	taskH := task.NewHandler(taskSvc)
 
 	noteRepo := note.NewRepository(db)
@@ -79,6 +83,9 @@ func main() {
 		api.GET("/lists/:id", listH.GetByID)
 		api.PUT("/lists/:id", listH.Update)
 		api.DELETE("/lists/:id", listH.Delete)
+
+		api.GET("/stages", stageH.Get)
+		api.PUT("/stages", stageH.Put)
 
 		api.POST("/lists/:id/tasks", taskH.Create)
 		api.GET("/lists/:id/tasks", taskH.GetByList)

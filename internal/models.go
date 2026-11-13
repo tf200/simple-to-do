@@ -23,7 +23,16 @@ type Task struct {
 	Description string              `bson:"description" json:"description"`
 	DueAt       *primitive.DateTime `bson:"due_at,omitempty" json:"due_at,omitempty"`
 	Done        bool                `bson:"done" json:"done"`
-	CreatedAt   primitive.DateTime  `bson:"created_at" json:"created_at"`
+	// The workflow step the task is in (a Stage id); empty for to do and done.
+	Stage     string             `bson:"stage,omitempty" json:"stage,omitempty"`
+	CreatedAt primitive.DateTime `bson:"created_at" json:"created_at"`
+}
+
+// Stage is a step of a user's workflow, between to do and done.
+type Stage struct {
+	ID    string `bson:"id" json:"id"`
+	Name  string `bson:"name" json:"name"`
+	Color string `bson:"color" json:"color"`
 }
 
 type Note struct {

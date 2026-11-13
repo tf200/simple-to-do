@@ -2,6 +2,7 @@ package task
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -91,6 +92,8 @@ func (h *Handler) Update(c *gin.Context) {
 		// Raw so a missing due_at (leave it) differs from "due_at": null (clear it).
 		DueAt json.RawMessage `json:"due_at"`
 		Done  *bool           `json:"done"`
+		// A workflow step's id, or "" for to do.
+		Stage *string `json:"stage"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -111,7 +114,11 @@ func (h *Handler) Update(c *gin.Context) {
 		due.Set = &at
 	}
 
-	if err := h.service.Update(c.Request.Context(), userID, taskID, req.Title, req.Description, due, req.Done); err != nil {
+	if err := h.service.Update(c.Request.Context(), userID, taskID, req.Title, req.Description, due, req.Done, req.Stage); err != nil {
+		if errors.Is(err, ErrBadStage) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
